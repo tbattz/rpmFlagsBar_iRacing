@@ -1,0 +1,3 @@
+[submodule "irsdk"]
+	path = irsdk
+	url = https://github.com/tbattz/irsdk.git
