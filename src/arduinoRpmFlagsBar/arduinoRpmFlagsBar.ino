@@ -14,11 +14,11 @@
 // Set LED Timing Parameters
 const unsigned int PIT_LIMITER_MS = 500;      // The time for one half cycle of the pit limiter. Full cycle = On, Off.
 const unsigned int CHECKERED_FLAG_MS = 500;   // The time for one half cycle of flashing white/gray LEDs. Full cycle = On, Off.
-const unsigned int RED_FLAG_MS = 500;         // The time for one half cycle of flashing red LEDs. Full cycle = On, Off.
-const unsigned int YELLOW_FLAG_MS = 500;      // The time for one half cycle of flashing yellow LEDs. Full cycle = On, Off.
-const unsigned int GREEN_FLAG_MS = 500;       // The time for one half cycle of flashing green LEDs. Full cycle = On, Off.
-const unsigned int BLUE_FLAG_MS = 500;       // The time for one half cycle of flashing blue LEDs. Full cycle = On, Off.
-const unsigned int WHITE_FLAG_MS = 500;       // The time for one half cycle of flashing white LEDs. Full cycle = On, Off.
+const unsigned int RED_FLAG_MS = 250;         // The time for one half cycle of flashing red LEDs. Full cycle = On, Off.
+const unsigned int YELLOW_FLAG_MS = 250;      // The time for one half cycle of flashing yellow LEDs. Full cycle = On, Off.
+const unsigned int GREEN_FLAG_MS = 250;       // The time for one half cycle of flashing green LEDs. Full cycle = On, Off.
+const unsigned int BLUE_FLAG_MS = 250;       // The time for one half cycle of flashing blue LEDs. Full cycle = On, Off.
+const unsigned int WHITE_FLAG_MS = 250;       // The time for one half cycle of flashing white LEDs. Full cycle = On, Off.
 
 // Set message variables
 const byte numChars = 64;
@@ -30,8 +30,15 @@ unsigned int commaCount = 0;
 const char* delimCharS = ',';         // Must be single quotes, not double, this isn't python.
 const char* delimCharD = ",";
 
-
+// True for a complete message
 boolean newData = false;
+
+// Flag Timer Variables
+unsigned long flagCycleEnd = 0; // End of the current cycle (either On cycle or off cycle)
+int timedFlagId = 0;  // ID of the flag action
+unsigned int currentFlagMS = 0; // The cycle timer difference for the current flag
+boolean currentFlagState = false; // Whether the cycle is on or off
+
 
 
 void setup() {
@@ -53,7 +60,10 @@ void loop() {
     parseData();
     // Reset message flag
     newData = false;
-  }  
+  }
+
+  // Check current flag states
+  checkFlagState(timedFlagId);
 }
 
 
@@ -103,11 +113,11 @@ void parseData() {
   }
   // Split the received string by commas
   if (commaCount > 0) {
-    char * strtokIndx;                         // used by strtok() as an index
-    strtokIndx = strtok(tempChars, delimCharD); // Gets the first part of the string
-    integerFromPC = atoi(strtokIndx);          // Save the message format id
+    char * strtokIndx;                           // used by strtok() as an index
+    strtokIndx = strtok(tempChars, delimCharD);  // Gets the first part of the string
+    integerFromPC = atoi(strtokIndx);            // Save the message format id
     // Save the second argument
-    strtokIndx = strtok(NULL, delimCharD);      // Continues where previous call left off
+    strtokIndx = strtok(NULL, delimCharD);       // Continues where previous call left off
     if (integerFromPC == 8) {
       rpmPer = atoi(strtokIndx);  
       displayRpm(rpmPer);
@@ -124,35 +134,43 @@ void handleFlags(int flagInt) {
   switch(flagInt) {
     case 0: {
       Serial.println("INACTIVE");
+      // Turn off LEDs
       digitalWrite(LED_BUILTIN, LOW);
       break;
     }
     case 1: {
+      startNewFlag(flagInt, PIT_LIMITER_MS);
       Serial.println("PIT_LIMITER");
       break;
     }
     case 2: {
       Serial.println("CHECKERED_FLAG");
+      startNewFlag(flagInt, CHECKERED_FLAG_MS);
       break;
     }
     case 3: {
       Serial.println("RED_FLAG");
+      startNewFlag(flagInt, RED_FLAG_MS);
       break;
     }
     case 4: {
       Serial.println("YELLOW_FLAG");
+      startNewFlag(flagInt, YELLOW_FLAG_MS);
       break;
     }
     case 5: {
       Serial.println("GREEN_FLAG");
+      startNewFlag(flagInt, GREEN_FLAG_MS);
       break;
     }
     case 6: {
       Serial.println("BLUE_FLAG");
+      startNewFlag(flagInt, BLUE_FLAG_MS);
       break;
     }
     case 7: {
       Serial.println("WHITE_FLAG");
+      startNewFlag(flagInt, WHITE_FLAG_MS);
       break;
     }
     default: {}
@@ -163,4 +181,34 @@ void displayRpm(unsigned int currRpmPer) {
   Serial.print("RPM-Percentage: ");
   Serial.println(currRpmPer); 
   digitalWrite(LED_BUILTIN, HIGH);
+}
+
+void startNewFlag(unsigned int flagId, unsigned int flagMS) {
+  // Set start of current flag
+  timedFlagId = flagId;
+  currentFlagMS = flagMS;
+  flagCycleEnd = millis() + flagMS;
+  currentFlagState = true;
+  // Set LEDs On
+  digitalWrite(LED_BUILTIN, HIGH);  
+}
+
+void checkFlagState(unsigned int currentFlag) {
+  // Check we are still on the current flag
+  if (currentFlag !=0 && currentFlag !=8) {
+    if (currentFlag == integerFromPC) {
+      if (millis() > flagCycleEnd) {
+        // Toggle current cycle
+        currentFlagState = !currentFlagState;
+        // Update timers
+        flagCycleEnd = flagCycleEnd + currentFlagMS;
+        // Update LED State
+        if (currentFlagState) {
+          digitalWrite(LED_BUILTIN, HIGH);
+        } else {
+          digitalWrite(LED_BUILTIN, LOW);
+        }
+      }    
+    }
+  }
 }
