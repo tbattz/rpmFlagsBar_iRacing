@@ -42,7 +42,7 @@ boolean currentFlagState = false; // Whether the cycle is on or off
 
 
 void setup() {
-  Serial.begin(2000000);
+  Serial.begin(250000);
   // TODO - Setup flashing lights on initialisation
 
 
@@ -133,43 +133,43 @@ void parseData() {
 void handleFlags(int flagInt) {
   switch(flagInt) {
     case 0: {
-      Serial.println("INACTIVE");
+      //Serial.println("INACTIVE");
       // Turn off LEDs
       digitalWrite(LED_BUILTIN, LOW);
       break;
     }
     case 1: {
       startNewFlag(flagInt, PIT_LIMITER_MS);
-      Serial.println("PIT_LIMITER");
+      //Serial.println("PIT_LIMITER");
       break;
     }
     case 2: {
-      Serial.println("CHECKERED_FLAG");
+      //Serial.println("CHECKERED_FLAG");
       startNewFlag(flagInt, CHECKERED_FLAG_MS);
       break;
     }
     case 3: {
-      Serial.println("RED_FLAG");
+      //Serial.println("RED_FLAG");
       startNewFlag(flagInt, RED_FLAG_MS);
       break;
     }
     case 4: {
-      Serial.println("YELLOW_FLAG");
+      //Serial.println("YELLOW_FLAG");
       startNewFlag(flagInt, YELLOW_FLAG_MS);
       break;
     }
     case 5: {
-      Serial.println("GREEN_FLAG");
+      //Serial.println("GREEN_FLAG");
       startNewFlag(flagInt, GREEN_FLAG_MS);
       break;
     }
     case 6: {
-      Serial.println("BLUE_FLAG");
+      //Serial.println("BLUE_FLAG");
       startNewFlag(flagInt, BLUE_FLAG_MS);
       break;
     }
     case 7: {
-      Serial.println("WHITE_FLAG");
+      //Serial.println("WHITE_FLAG");
       startNewFlag(flagInt, WHITE_FLAG_MS);
       break;
     }
@@ -178,8 +178,8 @@ void handleFlags(int flagInt) {
 }
 
 void displayRpm(unsigned int currRpmPer) {
-  Serial.print("RPM-Percentage: ");
-  Serial.println(currRpmPer); 
+  //Serial.print("RPM-Percentage: ");
+  //Serial.println(currRpmPer); 
   digitalWrite(LED_BUILTIN, HIGH);
 }
 

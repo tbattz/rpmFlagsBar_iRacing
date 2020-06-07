@@ -5,11 +5,6 @@
 // Standard Includes
 #include <iostream>
 #include <memory>
-#include <thread>
-#include <chrono>
-#include <string>
-#include <fstream>
-#include <streambuf>
 
 
 // Project Includes
@@ -25,26 +20,20 @@ int main(int argc, char* argv[]) {
     // Load file
     ConfigParser cp("../../config/config.cfg");
 
-
-    // Connect to Arduino on COM Port
-    std::ofstream arduino;
-    arduino.open(cp.gettCOMPort());
-    arduino << "Hello World from C++!" << std::endl;
-    arduino.close();
-
+    // Establish a connection to the arduino
+    std::shared_ptr<Serial> arduinoSerial = std::make_shared<Serial>(cp.getCOMPort().c_str());
 
     // Create IRData
     std::shared_ptr<IRData> irData;
     if(argc == 1 || strcmp(argv[1], "sim") == 0) {
         irData = std::make_shared<IRData>();
     } else if (strcmp(argv[1], "file") == 0) {
-        const char* filepath = R"(C:\Users\tbatt\Documents\iRacing\telemetry\dallaraf3_brandshatch indy 2020-04-09 21-32-00.ibt)";
+        const char* filepath = R"(C:\Users\tbatt\Documents\iRacing\telemetry\trucks silverado_daytona oval 2020-06-06 21-34-23.ibt)";
         irData = std::make_shared<IRData>(filepath);
     }
 
     // Create state machine
     std::shared_ptr<IRData> irDataPt = std::shared_ptr<IRData>(irData);
-    StateMachine stateMachine = StateMachine(irDataPt);
-
+    StateMachine stateMachine = StateMachine(irDataPt, arduinoSerial);
 
 }

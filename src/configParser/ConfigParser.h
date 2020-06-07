@@ -20,7 +20,7 @@ public:
     ConfigParser(const char* configFilePath);
 
     // Functions
-    std::string gettCOMPort();
+    std::string getCOMPort();
 
 private:
     // Data

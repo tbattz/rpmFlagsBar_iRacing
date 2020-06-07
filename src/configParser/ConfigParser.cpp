@@ -58,8 +58,8 @@ void ConfigParser::parseData(std::string inputString) {
 
 }
 
-std::string ConfigParser::gettCOMPort() {
-    return comPort;
+std::string ConfigParser::getCOMPort() {
+    return R"(\\.\)" + comPort;
 }
 
 

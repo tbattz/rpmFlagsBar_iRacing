@@ -4,12 +4,16 @@
 
 #include "StateMachine.h"
 
+#include <utility>
 
 
 
-StateMachine::StateMachine(std::shared_ptr<IRData> irDataPt) {
+
+StateMachine::StateMachine(std::shared_ptr<IRData> irDataPt, std::shared_ptr<Serial> arduinoSerial) {
     // Store IRData
     this->irData = std::move(irDataPt);
+    // Store Arduino File
+    this->arduinoSerial = std::move(arduinoSerial);
     // Set initial states
     connState = DISCONNECTED;
     actionState = INACTIVE;
@@ -20,6 +24,8 @@ StateMachine::StateMachine(std::shared_ptr<IRData> irDataPt) {
 
 void StateMachine::stateLoop() {
     while (running) {
+        // Try to update data
+        irData->updateData();
         // Check if we have a connection
         switch (connState) {
             case DISCONNECTED: {
@@ -45,6 +51,9 @@ void StateMachine::stateDisconnected() {
         std::cout << "[CONNECTED]: Connected to IRacing Server" << std::endl;
     } else {
         std::cout << "[DISCONNECTED]: Unable to connect to IRacing Server" << std::endl;
+
+        // Send inactive
+        StateMachine::sendInactive();
 
         // Sleep for a little
         std::this_thread::sleep_for (std::chrono::milliseconds(disconnectedDelay));
@@ -77,15 +86,8 @@ void StateMachine::stateConnected() {
 void StateMachine::actionInactive() {
     // Wait for car to come on track
     if(irData->isCarOnTrack()) {
+        // Update flags and limiter
         StateMachine::checkCurrentAction();
-        // Check for flags
-
-        // Check for penalty
-
-        // Check for pit limiter
-
-        // Check For penalties
-
     } else {
         // Delay until next check
         std::this_thread::sleep_for (std::chrono::milliseconds(inactiveDelay));
@@ -168,37 +170,47 @@ void StateMachine::updateGlobalFlags() {
 }
 
 void StateMachine::sendPitLimiter() {
-
+    const char* strToSend = "<1>";
+    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
 }
 
 void StateMachine::sendCheckeredFlag() {
-
+    const char* strToSend = "<2>";
+    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
 }
 
 void StateMachine::sendRedFlag() {
-
+    const char* strToSend = "<3>";
+    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
 }
 
 void StateMachine::sendYellowFlag() {
-
+    const char* strToSend = "<4>";
+    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
 }
 
 void StateMachine::sendGreenFlag() {
-
+    const char* strToSend = "<5>";
+    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
 }
 
 void StateMachine::sendBlueFlag() {
-
+    const char* strToSend = "<6>";
+    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
 }
 
 void StateMachine::sendWhiteFlag() {
-
+    const char* strToSend = "<7>";
+    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
 }
 
 void StateMachine::sendRPM() {
-
+    char rpmOut[7];
+    sprintf(rpmOut, "<8,%03d>", 50);
+    this->arduinoSerial->WriteData(rpmOut, strlen(rpmOut));
 }
 
 void StateMachine::sendInactive() {
-
+    const char* strToSend = "<0>";
+    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
 }

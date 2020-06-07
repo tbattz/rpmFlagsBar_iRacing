@@ -11,9 +11,11 @@
 #include <utility>
 #include <thread>
 #include <chrono>
+#include <fstream>
 
 // Project Includes
 #include "src/irData/IRData.h"
+#include <src/serial/Serial.h>
 
 // IRacing SDK Includes
 #include <irsdk/irsdk_defines.h>
@@ -25,20 +27,20 @@ enum ConnectionState {
 };
 
 enum ActionState {
-    INACTIVE,
-    DISPLAY_PIT_LIMITER,
-    DISPLAY_CHECKERED_FLAG,
-    DISPLAY_RED_FLAG,
-    DISPLAY_YELLOW_FLAG,
-    DISPLAY_GREEN_FLAG,
-    DISPLAY_BLUE_FLAG,
-    DISPLAY_WHITE_FLAG,
-    DISPLAY_RPM,
+    INACTIVE = 0,
+    DISPLAY_PIT_LIMITER = 1,
+    DISPLAY_CHECKERED_FLAG = 2,
+    DISPLAY_RED_FLAG = 3,
+    DISPLAY_YELLOW_FLAG = 4,
+    DISPLAY_GREEN_FLAG = 5,
+    DISPLAY_BLUE_FLAG = 6,
+    DISPLAY_WHITE_FLAG = 7,
+    DISPLAY_RPM = 8,
     DISPLAY_PENALTY,
     DISPLAY_REPAIR
 };
 
-struct GlobalFlags {
+struct GlobalFlags2 {
     bool checkered = false;
     bool red = false;
     bool yellow = false;
@@ -57,12 +59,13 @@ struct DriverFlags {
 class StateMachine {
 public:
     // Constructor
-    StateMachine(std::shared_ptr<IRData> irDataPt);
+    StateMachine(std::shared_ptr<IRData> irDataPt, std::shared_ptr<Serial> arduinoSerial);
 
 private:
     // Data
     bool running = true;
     std::shared_ptr<IRData> irData;
+    std::shared_ptr<Serial> arduinoSerial;
     ConnectionState connState;
     ActionState actionState;
     // Sleep Timings
@@ -70,7 +73,7 @@ private:
     unsigned int inactiveDelay = 500; // ms
     // Flag states
     // Global
-    GlobalFlags globalFlags;
+    GlobalFlags2 globalFlags;
     // Driver
     DriverFlags driverFlags;
     // RPM
