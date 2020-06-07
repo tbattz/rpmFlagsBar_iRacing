@@ -148,11 +148,31 @@ int IRData::getVarType(const char *varName) {
     return value;
 }
 
+std::string IRData::getSessionStrVal(const std::string& inStr) {
+    // Gets session/driver information based on input string
+    // e.g. "DriverInfo:DriverCarIdx:"
+    int value = 0;
+    const int MAX_STR = 512;
+    char outStr[MAX_STR];
+    switch(mode) {
+        case MEMFILE: {
+            value = client.getSessionStrVal(inStr.c_str(), outStr, MAX_STR);
+            break;
+        }
+        case IBTFILE: {
+            value = diskClient.getSessionStrVal(inStr.c_str(), outStr, MAX_STR);
+            break;
+        }
+        default: {
+            std::cout << "Undefined IRData model" << std::endl;
+        }
+    }
+    return std::string(outStr);
+}
+
 int IRData::getTimeout() {
     return this->timeout;
 }
-
-
 
 bool IRData::isConnected() {
     switch(mode) {

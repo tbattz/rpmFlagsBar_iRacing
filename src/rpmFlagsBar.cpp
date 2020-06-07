@@ -33,7 +33,8 @@ int main(int argc, char* argv[]) {
     }
 
     // Create state machine
+    std::shared_ptr<ConfigParser> cpPt = std::make_shared<ConfigParser>(cp);
     std::shared_ptr<IRData> irDataPt = std::shared_ptr<IRData>(irData);
-    StateMachine stateMachine = StateMachine(irDataPt, arduinoSerial);
+    StateMachine stateMachine = StateMachine(cpPt, irDataPt, arduinoSerial);
 
 }

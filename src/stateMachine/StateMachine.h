@@ -12,10 +12,13 @@
 #include <thread>
 #include <chrono>
 #include <fstream>
+#include <utility>
+#include <unordered_map>
 
 // Project Includes
 #include "src/irData/IRData.h"
 #include <src/serial/Serial.h>
+#include <src/configParser/ConfigParser.h>
 
 // IRacing SDK Includes
 #include <irsdk/irsdk_defines.h>
@@ -59,11 +62,12 @@ struct DriverFlags {
 class StateMachine {
 public:
     // Constructor
-    StateMachine(std::shared_ptr<IRData> irDataPt, std::shared_ptr<Serial> arduinoSerial);
+    StateMachine(std::shared_ptr<ConfigParser> configParser, std::shared_ptr<IRData> irDataPt, std::shared_ptr<Serial> arduinoSerial);
 
 private:
     // Data
     bool running = true;
+    std::shared_ptr<ConfigParser> configParser;
     std::shared_ptr<IRData> irData;
     std::shared_ptr<Serial> arduinoSerial;
     ConnectionState connState;
@@ -78,15 +82,29 @@ private:
     DriverFlags driverFlags;
     // RPM
     unsigned int rpm = 0;
+    RpmScale rpmScale = {};
+    // Car
+    std::string currentCar = "";
 
     // Functions
     // States
     void stateLoop();
     void stateDisconnected();
     void stateConnected();
-    void actionInactive();
-    void checkCurrentAction();
     void updateGlobalFlags();
+    void setActionState(ActionState newActionState);
+    // Actions
+    void checkCurrentAction();
+    void actionInactive();
+    void actionDisplayPitLimiter();
+    void actionDisplayCheckeredFlag();
+    void actionDisplayRedFlag();
+    void actionDisplayYellowFlag();
+    void actionDisplayGreenFlag();
+    void actionDisplayBlueFlag();
+    void actionDisplayWhiteFlag();
+    void actionDisplayRpm();
+
     // Commands
     void sendPitLimiter();
     void sendCheckeredFlag();

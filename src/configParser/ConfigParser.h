@@ -12,6 +12,13 @@
 #include <sstream>
 #include <vector>
 #include <iterator>
+#include <unordered_map>
+
+
+struct RpmScale {
+    unsigned int minRpm = 0;
+    unsigned int maxRpm = 1;
+};
 
 
 class ConfigParser {
@@ -21,10 +28,12 @@ public:
 
     // Functions
     std::string getCOMPort();
+    RpmScale getCarRpmScale(const std::string& carName);
 
 private:
     // Data
     std::string comPort = "";
+    std::unordered_map<std::string, RpmScale> carsMap;
 
     // Functions
     std::vector<std::string> splitStringDelim(std::string inString, std::string delim);

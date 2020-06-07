@@ -41,6 +41,7 @@ public:
     double getVarDouble(const char* varName, int entry);
     int getVarInt(const char* varName, int entry);
     int getVarType(const char *varName);
+    std::string getSessionStrVal(const std::string& inStr);
     int getTimeout();
     bool isConnected();
     bool isCarOnTrack();

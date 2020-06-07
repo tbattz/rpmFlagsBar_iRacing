@@ -26,10 +26,18 @@ ConfigParser::ConfigParser(const char *configFilePath) {
         // Check for com port
         if (splitString.size() > 1 && (splitString[0] == "comPort")) {
             comPort = splitString[1];
-            std::cout << "[CONFIG] COM Port: " << comPort << std::endl;
+            std::cout << "[CONFIG]: COM Port: " << comPort << std::endl;
+        } else if (splitString.size() > 1 && splitString[0] == "cars") {
+            for(unsigned int i=1; i < splitString.size(); i++) {
+                // Split substring by commas
+                std::vector<std::string> carSplitString = ConfigParser::splitStringDelim(splitString[i], ",");
+                std::string carName = carSplitString[0];
+                RpmScale rpmScale = {stoul(carSplitString[1]), stoul(carSplitString[2])};
+                carsMap.insert({carName, rpmScale});
+                std::cout << "[CONFIG]: Found Car: " << carName << " - Rpm Range (" << rpmScale.minRpm << ", " << rpmScale.maxRpm << ")" << std::endl;
+            }
         }
     }
-
 }
 
 std::vector<std::string> ConfigParser::splitStringDelim(std::string inString, std::string delim) {
@@ -53,14 +61,22 @@ std::vector<std::string> ConfigParser::splitStringDelim(std::string inString, st
     return outVec;
 }
 
-void ConfigParser::parseData(std::string inputString) {
-
-
-}
-
 std::string ConfigParser::getCOMPort() {
     return R"(\\.\)" + comPort;
 }
+
+RpmScale ConfigParser::getCarRpmScale(const std::string& carName) {
+    // If car is not found, returns default rpm scale.
+    std::unordered_map<std::string, RpmScale>::const_iterator mapIt = carsMap.find(carName);
+    if(mapIt == carsMap.end()) {
+        std::cout << "[Config]: Could not find RpmScale for car " << carName << std::endl;
+        RpmScale defaultRpmScale = {};
+        return defaultRpmScale;
+    } else {
+        return mapIt->second;
+    }
+}
+
 
 
 

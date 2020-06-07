@@ -7,16 +7,16 @@
 #include <utility>
 
 
-
-
-StateMachine::StateMachine(std::shared_ptr<IRData> irDataPt, std::shared_ptr<Serial> arduinoSerial) {
+StateMachine::StateMachine(std::shared_ptr<ConfigParser> configParser, std::shared_ptr<IRData> irDataPt, std::shared_ptr<Serial> arduinoSerial) {
+    // Store config parser
+    this->configParser = std::move(configParser);
     // Store IRData
     this->irData = std::move(irDataPt);
     // Store Arduino File
     this->arduinoSerial = std::move(arduinoSerial);
     // Set initial states
     connState = DISCONNECTED;
-    actionState = INACTIVE;
+    setActionState(INACTIVE);
 
     // Start state loop
     StateMachine::stateLoop();
@@ -49,6 +49,14 @@ void StateMachine::stateDisconnected() {
     if(irData->isConnected()) {
         connState = CONNECTED;
         std::cout << "[CONNECTED]: Connected to IRacing Server" << std::endl;
+        // Check for player car
+        unsigned int carIdx = irData->getVarInt("PlayerCarIdx", 0);
+        std::string filterStr = "DriverInfo:Drivers:CarIdx:{" + std::to_string(carIdx) + "}CarScreenName:";
+        currentCar = irData->getSessionStrVal(filterStr);
+        std::cout << "[CONNECTED]: Current car: " << currentCar << std::endl;
+        // Check for configuration for this car
+        rpmScale = configParser->getCarRpmScale(currentCar);
+        std::cout << "[CONNECTED]: Rpm Scale: (" << rpmScale.minRpm << ", " << rpmScale.maxRpm << ")" << std::endl;
     } else {
         std::cout << "[DISCONNECTED]: Unable to connect to IRacing Server" << std::endl;
 
@@ -69,13 +77,46 @@ void StateMachine::stateConnected() {
                 StateMachine::actionInactive();
                 break;
             }
-
+            case DISPLAY_PIT_LIMITER: {
+                StateMachine::actionDisplayPitLimiter();
+                break;
+            }
+            case DISPLAY_CHECKERED_FLAG: {
+                StateMachine::actionDisplayCheckeredFlag();
+                break;
+            }
+            case DISPLAY_RED_FLAG: {
+                StateMachine::actionDisplayRedFlag();
+                break;
+            }
+            case DISPLAY_YELLOW_FLAG: {
+                StateMachine::actionDisplayYellowFlag();
+                break;
+            }
+            case DISPLAY_GREEN_FLAG: {
+                StateMachine::actionDisplayGreenFlag();
+                break;
+            }
+            case DISPLAY_BLUE_FLAG: {
+                StateMachine::actionDisplayBlueFlag();
+                break;
+            }
+            case DISPLAY_WHITE_FLAG: {
+                StateMachine::actionDisplayWhiteFlag();
+                break;
+            }
+            case DISPLAY_RPM: {
+                StateMachine::actionDisplayWhiteFlag();
+                break;
+            }
             default: {
-                //std::cout << "Invalid Action State!" << std::endl;
+                std::cout << "Invalid Action State!" << std::endl;
             }
         }
     } else {
         connState = DISCONNECTED;
+        currentCar = ""; // Set current car to nothing
+        rpmScale = RpmScale();
         std::cout << "[DISCONNECTED]: Disconnected from to IRacing Server" << std::endl;
 
         // Sleep for a little
@@ -94,6 +135,38 @@ void StateMachine::actionInactive() {
     }
 }
 
+void StateMachine::actionDisplayPitLimiter() {
+
+}
+
+void StateMachine::actionDisplayCheckeredFlag() {
+
+}
+
+void StateMachine::actionDisplayRedFlag() {
+
+}
+
+void StateMachine::actionDisplayYellowFlag() {
+
+}
+
+void StateMachine::actionDisplayGreenFlag() {
+
+}
+
+void StateMachine::actionDisplayBlueFlag() {
+
+}
+
+void StateMachine::actionDisplayWhiteFlag() {
+
+}
+
+void StateMachine::actionDisplayRpm() {
+
+}
+
 void StateMachine::checkCurrentAction() {
     if(irData->isCarOnTrack()) {
         // Update stored flags
@@ -109,38 +182,38 @@ void StateMachine::checkCurrentAction() {
          * RPM */
         if (driverFlags.pitLimiter) {
             // Always send Pit Limiter
-            actionState = DISPLAY_PIT_LIMITER;
+            setActionState(DISPLAY_PIT_LIMITER);
             StateMachine::sendPitLimiter();
         } else if (globalFlags.checkered) {
             // Initiate Checkered Flag
-            actionState = DISPLAY_CHECKERED_FLAG;
+            setActionState(DISPLAY_CHECKERED_FLAG);
             StateMachine::sendCheckeredFlag();
         } else if (globalFlags.red) {
             // Initiate Red Flag
-            actionState = DISPLAY_RED_FLAG;
+            setActionState(DISPLAY_RED_FLAG);
             StateMachine::sendRedFlag();
         } else if (globalFlags.yellow) {
             // Initiate Yellow Flag
-            actionState = DISPLAY_YELLOW_FLAG;
+            setActionState(DISPLAY_YELLOW_FLAG);
             StateMachine::sendYellowFlag();
         } else if (globalFlags.green) {
             // Initiate Green Flag
-            actionState = DISPLAY_GREEN_FLAG;
+            setActionState(DISPLAY_GREEN_FLAG);
             StateMachine::sendGreenFlag();
         } else if (globalFlags.blue) {
             // Initiate Blue Flag
-            actionState = DISPLAY_BLUE_FLAG;
+            setActionState(DISPLAY_BLUE_FLAG);
             StateMachine::sendBlueFlag();
         } else if (globalFlags.white) {
             // Initiate White Flag
-            actionState = DISPLAY_WHITE_FLAG;
+            setActionState(DISPLAY_WHITE_FLAG);
             StateMachine::sendWhiteFlag();
         } else {
-            actionState = DISPLAY_RPM;
+            setActionState(DISPLAY_RPM);
             StateMachine::sendRPM();
         }
     } else {
-        actionState = INACTIVE;
+        setActionState(INACTIVE);
         StateMachine::sendInactive();
         std::cout << "[INACTIVE]: Car not on track" << std::endl;
         // Delay until next check
@@ -167,6 +240,34 @@ void StateMachine::updateGlobalFlags() {
     driverFlags.repair = (sessionFlag & irsdk_repair);
     // Pit Limiter
     driverFlags.pitLimiter = (engineWarnings & irsdk_pitSpeedLimiter);
+}
+
+void StateMachine::setActionState(ActionState newActionState) {
+    if (actionState != newActionState) {
+        // New state set
+        actionState = newActionState;
+        std::string actionStr = "";
+        if(actionState == INACTIVE) {
+            actionStr = "INACTIVE";
+        } else if (actionState == DISPLAY_PIT_LIMITER) {
+            actionStr = "DISPLAY_PIT_LIMITER";
+        } else if (actionState == DISPLAY_CHECKERED_FLAG) {
+            actionStr = "DISPLAY_CHECKERED_FLAG";
+        } else if (actionState == DISPLAY_RED_FLAG) {
+            actionStr = "DISPLAY_RED_FLAG";
+        } else if (actionState == DISPLAY_YELLOW_FLAG) {
+            actionStr = "DISPLAY_YELLOW_FLAG";
+        } else if (actionState == DISPLAY_GREEN_FLAG) {
+            actionStr = "DISPLAY_GREEN_FLAG";
+        } else if (actionState == DISPLAY_BLUE_FLAG) {
+            actionStr = "DISPLAY_BLUE_FLAG";
+        } else if (actionState == DISPLAY_WHITE_FLAG) {
+            actionStr = "DISPLAY_WHITE_FLAG";
+        } else if (actionState == DISPLAY_RPM) {
+            actionStr = "DISPLAY_RPM";
+        }
+        std::cout << "[ActionState]: " << actionStr << std::endl;
+    }
 }
 
 void StateMachine::sendPitLimiter() {
