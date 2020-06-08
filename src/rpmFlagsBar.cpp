@@ -29,6 +29,7 @@ int main(int argc, char* argv[]) {
         irData = std::make_shared<IRData>();
     } else if (strcmp(argv[1], "file") == 0) {
         const char* filepath = R"(C:\Users\tbatt\Documents\iRacing\telemetry\trucks silverado_daytona oval 2020-06-06 21-34-23.ibt)";
+        //const char* filepath = R"(C:\Users\tbatt\Documents\iRacing\telemetry\dallaraf3_brandshatch indy 2020-04-09 21-32-00.ibt)";
         irData = std::make_shared<IRData>(filepath);
     }
 

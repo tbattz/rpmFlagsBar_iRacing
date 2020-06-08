@@ -18,7 +18,7 @@ void ContinuousRpmAction::updateAction(bool flagState) {
 void ContinuousRpmAction::sendAction(std::shared_ptr<Serial> arduinoSerial) {
     // Send action
     char rpmOut[7];
-    sprintf(rpmOut, "<8,%03d>", 50);
+    sprintf(rpmOut, "<8,%03d>", rpmPer);
     arduinoSerial->WriteData(rpmOut, strlen(rpmOut));
     // Log action
     if (newUpdate) {
@@ -26,6 +26,23 @@ void ContinuousRpmAction::sendAction(std::shared_ptr<Serial> arduinoSerial) {
     }
 }
 
+void ContinuousRpmAction::setRpmScale(RpmScale rpmScale) {
+    this->rpmScale = rpmScale;
+    // Calculate coefficients
+    m = 100 / (float)(rpmScale.maxRpm - rpmScale.minRpm);
+    c = -m * (float)rpmScale.minRpm;
+}
 
-
+void ContinuousRpmAction::setRpm(unsigned int newRpm) {
+    // Set rpm
+    this->rpm = newRpm;
+    // Calculate rpm percentage
+    if (rpm > rpmScale.minRpm) {
+        if (rpm < rpmScale.maxRpm) {
+            rpmPer = (unsigned int)( (m*(float)rpm) + c);
+        } else {
+            rpmPer = 100;
+        }
+    }
+}
 

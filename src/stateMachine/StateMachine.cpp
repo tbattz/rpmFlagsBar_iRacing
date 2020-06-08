@@ -28,24 +28,53 @@ StateMachine::StateMachine(std::shared_ptr<ConfigParser> configParser, std::shar
 
 void StateMachine::addActions() {
     // The order actions are added, determines their hierarchy when looping over the map
+    /* Hierarchy of flags to display
+     * PIT_LIMITER
+     * CHECKERED
+     * RED
+     * YELLOW
+     * GREEN
+     * BLUE
+     * WHITE
+     * RPM */
+    actions.insert({DISPLAY_PIT_LIMITER, std::make_shared<ContinuousAction>("DISPLAY_PIT_LIMITER", DISPLAY_PIT_LIMITER)});
+    actions.insert({DISPLAY_CHECKERED_FLAG, std::make_shared<TimedAction>("DISPLAY_CHECKERED_FLAG", DISPLAY_CHECKERED_FLAG, checkeredDuration)});
+    actions.insert({DISPLAY_RED_FLAG, std::make_shared<ContinuousAction>("DISPLAY_RED_FLAG", DISPLAY_RED_FLAG)});
+    actions.insert({DISPLAY_YELLOW_FLAG, std::make_shared<ContinuousAction>("DISPLAY_YELLOW_FLAG", DISPLAY_YELLOW_FLAG)});
+    actions.insert({DISPLAY_GREEN_FLAG, std::make_shared<TimedAction>("DISPLAY_GREEN_FLAG", DISPLAY_GREEN_FLAG, greenDuration)});
+    actions.insert({DISPLAY_BLUE_FLAG, std::make_shared<TimedAction>("DISPLAY_BLUE_FLAG", DISPLAY_BLUE_FLAG, blueDuration)});
+    actions.insert({DISPLAY_WHITE_FLAG, std::make_shared<TimedAction>("DISPLAY_WHITE_FLAG", DISPLAY_WHITE_FLAG, whiteDuration)});
     actions.insert({INACTIVE, std::make_shared<ContinuousAction>("INACTIVE", INACTIVE)});
     actions.insert({DISPLAY_RPM, std::make_shared<ContinuousRpmAction>("DISPLAY_RPM", DISPLAY_RPM)});
 }
 
 void StateMachine::updateActions() {
     // Update actions with the new flag state
-    actions[INACTIVE]->updateAction(true);
+    actions[DISPLAY_PIT_LIMITER]->updateAction(driverFlags.pitLimiter);
+    actions[DISPLAY_CHECKERED_FLAG]->updateAction(globalFlags.checkered);
+    actions[DISPLAY_RED_FLAG]->updateAction(globalFlags.red);
+    actions[DISPLAY_YELLOW_FLAG]->updateAction(globalFlags.yellow);
+    actions[DISPLAY_GREEN_FLAG]->updateAction(globalFlags.green);
+    actions[DISPLAY_BLUE_FLAG]->updateAction(globalFlags.blue);
+    actions[DISPLAY_WHITE_FLAG]->updateAction(globalFlags.white);
     actions[DISPLAY_RPM]->updateAction(irData->isCarOnTrack());
+    actions[INACTIVE]->updateAction(true);
 }
 
 void StateMachine::sendAction(LEDAction action) {
+    // Send the action regardless of whether it was the last sent action
     // Set Current action
     currAction = action;
     // Send action
     this->actions[action]->sendAction(this->arduinoSerial);
 }
 
-
+void StateMachine::sendActionOnce(LEDAction action) {
+    // Only send the action if it is not the current action
+    if(action != currAction) {
+        StateMachine::sendAction(action);
+    }
+}
 
 void StateMachine::stateLoop() {
     while (running) {
@@ -82,6 +111,9 @@ void StateMachine::stateDisconnected() {
         std::cout << "[CONNECTED]: Current car: " << currentCar << std::endl;
         // Check for configuration for this car
         rpmScale = configParser->getCarRpmScale(currentCar);
+        // Update the rpm action
+        std::shared_ptr<ContinuousRpmAction> rpmPt = std::dynamic_pointer_cast<ContinuousRpmAction>(actions[DISPLAY_RPM]);
+        rpmPt->setRpmScale(rpmScale);
         std::cout << "[CONNECTED]: Rpm Scale: (" << rpmScale.minRpm << ", " << rpmScale.maxRpm << ")" << std::endl;
     } else {
         std::cout << "[DISCONNECTED]: Unable to connect to IRacing Server" << std::endl;
@@ -92,15 +124,6 @@ void StateMachine::stateDisconnected() {
 }
 
 void StateMachine::stateConnected() {
-    /* Hierarchy of flags to display
-     * PIT_LIMITER
-     * CHECKERED
-     * RED
-     * YELLOW
-     * GREEN
-     * BLUE
-     * WHITE
-     * RPM */
     // Update stored flags
     StateMachine::updateGlobalFlags();
     // Update current action states
@@ -109,14 +132,25 @@ void StateMachine::stateConnected() {
     // Check we are still connected
     if(irData->isConnected()) {
         // Find the first action which is available in the hierarchy
-        if (actions[DISPLAY_RPM]->isAvailable()) {
+        if (actions[DISPLAY_PIT_LIMITER]->isAvailable()) {
+            StateMachine::sendActionOnce(DISPLAY_PIT_LIMITER);
+        } else if (actions[DISPLAY_CHECKERED_FLAG]->isAvailable()) {
+            StateMachine::sendActionOnce(DISPLAY_CHECKERED_FLAG);
+        } else if (actions[DISPLAY_RED_FLAG]->isAvailable()) {
+            StateMachine::sendActionOnce(DISPLAY_RED_FLAG);
+        } else if (actions[DISPLAY_YELLOW_FLAG]->isAvailable()) {
+            StateMachine::sendActionOnce(DISPLAY_YELLOW_FLAG);
+        } else if (actions[DISPLAY_GREEN_FLAG]->isAvailable()) {
+            StateMachine::sendActionOnce(DISPLAY_GREEN_FLAG);
+        } else if (actions[DISPLAY_BLUE_FLAG]->isAvailable()) {
+            StateMachine::sendActionOnce(DISPLAY_BLUE_FLAG);
+        } else if (actions[DISPLAY_WHITE_FLAG]->isAvailable()) {
+            StateMachine::sendActionOnce(DISPLAY_WHITE_FLAG);
+        } else if (actions[DISPLAY_RPM]->isAvailable()) {
             StateMachine::sendAction(DISPLAY_RPM);
         } else if (actions[INACTIVE]->isAvailable()) {
-            StateMachine::sendAction(INACTIVE);
+            StateMachine::sendActionOnce(INACTIVE);
         }
-
-
-
     } else {
         connState = DISCONNECTED;
         currentCar = ""; // Set current car to nothing
@@ -140,7 +174,10 @@ void StateMachine::updateGlobalFlags() {
     // Multiple flags can be enabled at once, flags are bitfields.
     unsigned int sessionFlag = irData->getVarInt("SessionFlags", 0);
     unsigned int engineWarnings = irData->getVarInt("EngineWarnings", 0);
+    // Update rpm information
     rpm = irData->getVarInt("RPM", 0);
+    std::shared_ptr<ContinuousRpmAction> rpmPt = std::dynamic_pointer_cast<ContinuousRpmAction>(actions[DISPLAY_RPM]);
+    rpmPt->setRpm(rpm);
 
     // Check the state of the required flags
     // Global Flags
@@ -155,7 +192,6 @@ void StateMachine::updateGlobalFlags() {
     driverFlags.repair = (sessionFlag & irsdk_repair);
     // Pit Limiter
     driverFlags.pitLimiter = (engineWarnings & irsdk_pitSpeedLimiter);
-
 }
 
 

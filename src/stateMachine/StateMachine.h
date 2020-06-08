@@ -23,10 +23,9 @@
 #include <src/serial/Serial.h>
 #include <src/configParser/ConfigParser.h>
 #include <src/stateMachine/actions/IAction.h>
+#include <src/stateMachine/actions/TimedAction.h>
 #include <src/stateMachine/actions/ContinuousAction.h>
 #include <src/stateMachine/actions/ContinuousRpmAction.h>
-
-
 
 
 enum ConnectionState {
@@ -83,6 +82,10 @@ private:
     unsigned int loopDelay = 10; //ms
     unsigned int disconnectedDelay = 1000; // ms
     unsigned int inactiveDelay = 500; // ms
+    unsigned int checkeredDuration = 2000; // ms
+    unsigned int greenDuration = 2000; // ms
+    unsigned int blueDuration = 2000; // ms
+    unsigned int whiteDuration = 2000; // ms
 
     // States
     ConnectionState connState;
@@ -103,11 +106,11 @@ private:
     void addActions();
     void updateActions();
     void sendAction(LEDAction action);
+    void sendActionOnce(LEDAction action);
     void stateLoop();
     void stateDisconnected();
     void stateConnected();
     void updateGlobalFlags();
-
 
 };
 
