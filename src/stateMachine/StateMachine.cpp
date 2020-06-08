@@ -4,7 +4,6 @@
 
 #include "StateMachine.h"
 
-#include <utility>
 
 
 StateMachine::StateMachine(std::shared_ptr<ConfigParser> configParser, std::shared_ptr<IRData> irDataPt, std::shared_ptr<Serial> arduinoSerial) {
@@ -16,11 +15,37 @@ StateMachine::StateMachine(std::shared_ptr<ConfigParser> configParser, std::shar
     this->arduinoSerial = std::move(arduinoSerial);
     // Set initial states
     connState = DISCONNECTED;
-    setActionState(INACTIVE);
+    // Add Actions
+    StateMachine::addActions();
+
+    // Send inactive as default startup
+    // TODO - Custom startup cycling colours
+    StateMachine::sendAction(INACTIVE);
 
     // Start state loop
     StateMachine::stateLoop();
 }
+
+void StateMachine::addActions() {
+    // The order actions are added, determines their hierarchy when looping over the map
+    actions.insert({INACTIVE, std::make_shared<ContinuousAction>("INACTIVE", INACTIVE)});
+    actions.insert({DISPLAY_RPM, std::make_shared<ContinuousRpmAction>("DISPLAY_RPM", DISPLAY_RPM)});
+}
+
+void StateMachine::updateActions() {
+    // Update actions with the new flag state
+    actions[INACTIVE]->updateAction(true);
+    actions[DISPLAY_RPM]->updateAction(irData->isCarOnTrack());
+}
+
+void StateMachine::sendAction(LEDAction action) {
+    // Set Current action
+    currAction = action;
+    // Send action
+    this->actions[action]->sendAction(this->arduinoSerial);
+}
+
+
 
 void StateMachine::stateLoop() {
     while (running) {
@@ -40,12 +65,13 @@ void StateMachine::stateLoop() {
                 std::cout << "Invalid connection state!" << std::endl;
             }
         }
+        // Sleep for a little
+        std::this_thread::sleep_for (std::chrono::milliseconds(loopDelay));
     }
 }
 
 void StateMachine::stateDisconnected() {
     // Try to reconnect
-    irData->updateData();
     if(irData->isConnected()) {
         connState = CONNECTED;
         std::cout << "[CONNECTED]: Connected to IRacing Server" << std::endl;
@@ -60,164 +86,53 @@ void StateMachine::stateDisconnected() {
     } else {
         std::cout << "[DISCONNECTED]: Unable to connect to IRacing Server" << std::endl;
 
-        // Send inactive
-        StateMachine::sendInactive();
-
         // Sleep for a little
         std::this_thread::sleep_for (std::chrono::milliseconds(disconnectedDelay));
     }
 }
 
 void StateMachine::stateConnected() {
+    /* Hierarchy of flags to display
+     * PIT_LIMITER
+     * CHECKERED
+     * RED
+     * YELLOW
+     * GREEN
+     * BLUE
+     * WHITE
+     * RPM */
+    // Update stored flags
+    StateMachine::updateGlobalFlags();
+    // Update current action states
+    StateMachine::updateActions();
+
     // Check we are still connected
-    irData->updateData();
     if(irData->isConnected()) {
-        switch (actionState) {
-            case INACTIVE: {
-                StateMachine::actionInactive();
-                break;
-            }
-            case DISPLAY_PIT_LIMITER: {
-                StateMachine::actionDisplayPitLimiter();
-                break;
-            }
-            case DISPLAY_CHECKERED_FLAG: {
-                StateMachine::actionDisplayCheckeredFlag();
-                break;
-            }
-            case DISPLAY_RED_FLAG: {
-                StateMachine::actionDisplayRedFlag();
-                break;
-            }
-            case DISPLAY_YELLOW_FLAG: {
-                StateMachine::actionDisplayYellowFlag();
-                break;
-            }
-            case DISPLAY_GREEN_FLAG: {
-                StateMachine::actionDisplayGreenFlag();
-                break;
-            }
-            case DISPLAY_BLUE_FLAG: {
-                StateMachine::actionDisplayBlueFlag();
-                break;
-            }
-            case DISPLAY_WHITE_FLAG: {
-                StateMachine::actionDisplayWhiteFlag();
-                break;
-            }
-            case DISPLAY_RPM: {
-                StateMachine::actionDisplayWhiteFlag();
-                break;
-            }
-            default: {
-                std::cout << "Invalid Action State!" << std::endl;
-            }
+        // Find the first action which is available in the hierarchy
+        if (actions[DISPLAY_RPM]->isAvailable()) {
+            StateMachine::sendAction(DISPLAY_RPM);
+        } else if (actions[INACTIVE]->isAvailable()) {
+            StateMachine::sendAction(INACTIVE);
         }
+
+
+
     } else {
         connState = DISCONNECTED;
         currentCar = ""; // Set current car to nothing
         rpmScale = RpmScale();
+        // Reset flags
+        globalFlags = {false, false, false, false, false, false};
+        driverFlags = {false, false, false};
+
+        // Send action
+        StateMachine::sendAction(INACTIVE);
+
+        // Log Disconnected
         std::cout << "[DISCONNECTED]: Disconnected from to IRacing Server" << std::endl;
 
         // Sleep for a little
         std::this_thread::sleep_for (std::chrono::milliseconds(disconnectedDelay));
-    }
-}
-
-void StateMachine::actionInactive() {
-    // Wait for car to come on track
-    if(irData->isCarOnTrack()) {
-        // Update flags and limiter
-        StateMachine::checkCurrentAction();
-    } else {
-        // Delay until next check
-        std::this_thread::sleep_for (std::chrono::milliseconds(inactiveDelay));
-    }
-}
-
-void StateMachine::actionDisplayPitLimiter() {
-
-}
-
-void StateMachine::actionDisplayCheckeredFlag() {
-
-}
-
-void StateMachine::actionDisplayRedFlag() {
-
-}
-
-void StateMachine::actionDisplayYellowFlag() {
-
-}
-
-void StateMachine::actionDisplayGreenFlag() {
-
-}
-
-void StateMachine::actionDisplayBlueFlag() {
-
-}
-
-void StateMachine::actionDisplayWhiteFlag() {
-
-}
-
-void StateMachine::actionDisplayRpm() {
-
-}
-
-void StateMachine::checkCurrentAction() {
-    if(irData->isCarOnTrack()) {
-        // Update stored flags
-        StateMachine::updateGlobalFlags();
-        /* Hierarchy of flags to display
-         * PIT_LIMITER
-         * CHECKERED
-         * RED
-         * YELLOW
-         * GREEN
-         * BLUE
-         * WHITE
-         * RPM */
-        if (driverFlags.pitLimiter) {
-            // Always send Pit Limiter
-            setActionState(DISPLAY_PIT_LIMITER);
-            StateMachine::sendPitLimiter();
-        } else if (globalFlags.checkered) {
-            // Initiate Checkered Flag
-            setActionState(DISPLAY_CHECKERED_FLAG);
-            StateMachine::sendCheckeredFlag();
-        } else if (globalFlags.red) {
-            // Initiate Red Flag
-            setActionState(DISPLAY_RED_FLAG);
-            StateMachine::sendRedFlag();
-        } else if (globalFlags.yellow) {
-            // Initiate Yellow Flag
-            setActionState(DISPLAY_YELLOW_FLAG);
-            StateMachine::sendYellowFlag();
-        } else if (globalFlags.green) {
-            // Initiate Green Flag
-            setActionState(DISPLAY_GREEN_FLAG);
-            StateMachine::sendGreenFlag();
-        } else if (globalFlags.blue) {
-            // Initiate Blue Flag
-            setActionState(DISPLAY_BLUE_FLAG);
-            StateMachine::sendBlueFlag();
-        } else if (globalFlags.white) {
-            // Initiate White Flag
-            setActionState(DISPLAY_WHITE_FLAG);
-            StateMachine::sendWhiteFlag();
-        } else {
-            setActionState(DISPLAY_RPM);
-            StateMachine::sendRPM();
-        }
-    } else {
-        setActionState(INACTIVE);
-        StateMachine::sendInactive();
-        std::cout << "[INACTIVE]: Car not on track" << std::endl;
-        // Delay until next check
-        std::this_thread::sleep_for (std::chrono::milliseconds(inactiveDelay));
     }
 }
 
@@ -240,78 +155,7 @@ void StateMachine::updateGlobalFlags() {
     driverFlags.repair = (sessionFlag & irsdk_repair);
     // Pit Limiter
     driverFlags.pitLimiter = (engineWarnings & irsdk_pitSpeedLimiter);
+
 }
 
-void StateMachine::setActionState(ActionState newActionState) {
-    if (actionState != newActionState) {
-        // New state set
-        actionState = newActionState;
-        std::string actionStr = "";
-        if(actionState == INACTIVE) {
-            actionStr = "INACTIVE";
-        } else if (actionState == DISPLAY_PIT_LIMITER) {
-            actionStr = "DISPLAY_PIT_LIMITER";
-        } else if (actionState == DISPLAY_CHECKERED_FLAG) {
-            actionStr = "DISPLAY_CHECKERED_FLAG";
-        } else if (actionState == DISPLAY_RED_FLAG) {
-            actionStr = "DISPLAY_RED_FLAG";
-        } else if (actionState == DISPLAY_YELLOW_FLAG) {
-            actionStr = "DISPLAY_YELLOW_FLAG";
-        } else if (actionState == DISPLAY_GREEN_FLAG) {
-            actionStr = "DISPLAY_GREEN_FLAG";
-        } else if (actionState == DISPLAY_BLUE_FLAG) {
-            actionStr = "DISPLAY_BLUE_FLAG";
-        } else if (actionState == DISPLAY_WHITE_FLAG) {
-            actionStr = "DISPLAY_WHITE_FLAG";
-        } else if (actionState == DISPLAY_RPM) {
-            actionStr = "DISPLAY_RPM";
-        }
-        std::cout << "[ActionState]: " << actionStr << std::endl;
-    }
-}
 
-void StateMachine::sendPitLimiter() {
-    const char* strToSend = "<1>";
-    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
-}
-
-void StateMachine::sendCheckeredFlag() {
-    const char* strToSend = "<2>";
-    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
-}
-
-void StateMachine::sendRedFlag() {
-    const char* strToSend = "<3>";
-    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
-}
-
-void StateMachine::sendYellowFlag() {
-    const char* strToSend = "<4>";
-    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
-}
-
-void StateMachine::sendGreenFlag() {
-    const char* strToSend = "<5>";
-    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
-}
-
-void StateMachine::sendBlueFlag() {
-    const char* strToSend = "<6>";
-    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
-}
-
-void StateMachine::sendWhiteFlag() {
-    const char* strToSend = "<7>";
-    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
-}
-
-void StateMachine::sendRPM() {
-    char rpmOut[7];
-    sprintf(rpmOut, "<8,%03d>", 50);
-    this->arduinoSerial->WriteData(rpmOut, strlen(rpmOut));
-}
-
-void StateMachine::sendInactive() {
-    const char* strToSend = "<0>";
-    this->arduinoSerial->WriteData(strToSend, strlen(strToSend));
-}
