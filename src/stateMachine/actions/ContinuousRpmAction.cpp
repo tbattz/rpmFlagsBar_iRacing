@@ -39,10 +39,12 @@ void ContinuousRpmAction::setRpm(unsigned int newRpm) {
     // Calculate rpm percentage
     if (rpm > rpmScale.minRpm) {
         if (rpm < rpmScale.maxRpm) {
-            rpmPer = (unsigned int)( (m*(float)rpm) + c);
+            rpmPer = (unsigned int) ((m * (float) rpm) + c);
         } else {
             rpmPer = 100;
         }
+    } else {
+        rpmPer = 0.0;
     }
 }
 

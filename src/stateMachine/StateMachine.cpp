@@ -131,24 +131,28 @@ void StateMachine::stateConnected() {
 
     // Check we are still connected
     if(irData->isConnected()) {
-        // Find the first action which is available in the hierarchy
-        if (actions[DISPLAY_PIT_LIMITER]->isAvailable()) {
-            StateMachine::sendActionOnce(DISPLAY_PIT_LIMITER);
-        } else if (actions[DISPLAY_CHECKERED_FLAG]->isAvailable()) {
-            StateMachine::sendActionOnce(DISPLAY_CHECKERED_FLAG);
-        } else if (actions[DISPLAY_RED_FLAG]->isAvailable()) {
-            StateMachine::sendActionOnce(DISPLAY_RED_FLAG);
-        } else if (actions[DISPLAY_YELLOW_FLAG]->isAvailable()) {
-            StateMachine::sendActionOnce(DISPLAY_YELLOW_FLAG);
-        } else if (actions[DISPLAY_GREEN_FLAG]->isAvailable()) {
-            StateMachine::sendActionOnce(DISPLAY_GREEN_FLAG);
-        } else if (actions[DISPLAY_BLUE_FLAG]->isAvailable()) {
-            StateMachine::sendActionOnce(DISPLAY_BLUE_FLAG);
-        } else if (actions[DISPLAY_WHITE_FLAG]->isAvailable()) {
-            StateMachine::sendActionOnce(DISPLAY_WHITE_FLAG);
-        } else if (actions[DISPLAY_RPM]->isAvailable()) {
-            StateMachine::sendAction(DISPLAY_RPM);
-        } else if (actions[INACTIVE]->isAvailable()) {
+        if(irData->isCarOnTrack()) {
+            // Find the first action which is available in the hierarchy
+            if (actions[DISPLAY_PIT_LIMITER]->isAvailable()) {
+                StateMachine::sendActionOnce(DISPLAY_PIT_LIMITER);
+            } else if (actions[DISPLAY_CHECKERED_FLAG]->isAvailable()) {
+                StateMachine::sendActionOnce(DISPLAY_CHECKERED_FLAG);
+            } else if (actions[DISPLAY_RED_FLAG]->isAvailable()) {
+                StateMachine::sendActionOnce(DISPLAY_RED_FLAG);
+            } else if (actions[DISPLAY_YELLOW_FLAG]->isAvailable()) {
+                StateMachine::sendActionOnce(DISPLAY_YELLOW_FLAG);
+            } else if (actions[DISPLAY_GREEN_FLAG]->isAvailable()) {
+                StateMachine::sendActionOnce(DISPLAY_GREEN_FLAG);
+            } else if (actions[DISPLAY_BLUE_FLAG]->isAvailable()) {
+                StateMachine::sendActionOnce(DISPLAY_BLUE_FLAG);
+            } else if (actions[DISPLAY_WHITE_FLAG]->isAvailable()) {
+                StateMachine::sendActionOnce(DISPLAY_WHITE_FLAG);
+            } else if (actions[DISPLAY_RPM]->isAvailable()) {
+                StateMachine::sendAction(DISPLAY_RPM);
+            } else if (actions[INACTIVE]->isAvailable()) {
+                StateMachine::sendActionOnce(INACTIVE);
+            }
+        } else {
             StateMachine::sendActionOnce(INACTIVE);
         }
     } else {
