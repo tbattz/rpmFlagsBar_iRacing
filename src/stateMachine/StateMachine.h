@@ -82,7 +82,7 @@ private:
     unsigned int loopDelay = 10; //ms
     unsigned int disconnectedDelay = 1000; // ms
     unsigned int inactiveDelay = 500; // ms
-    unsigned int checkeredDuration = 2000; // ms
+    unsigned int checkeredDuration = 4000; // ms
     unsigned int greenDuration = 2000; // ms
     unsigned int blueDuration = 2000; // ms
     unsigned int whiteDuration = 2000; // ms

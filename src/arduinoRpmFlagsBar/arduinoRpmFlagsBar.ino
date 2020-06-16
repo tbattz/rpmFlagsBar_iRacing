@@ -16,7 +16,7 @@
 
 // Neopixel Settings
 #define NEO_PIN 3           // The pwn signal pin the neopixels are connected to
-#define LED_COUNT 20        // The number of LEDs in the strip
+#define LED_COUNT 17        // The number of LEDs in the strip
 #define LED_BRIGHTNESS 10  // 0 to 255
 
 // Create instance of Adafruit_NeoPixel class
