@@ -14,6 +14,7 @@ Currently implemented states:
 
 For example, in RPM state at 100%.
 ![Rpm Bar LEDs](images/rpmBar.png?raw=true "RPM LED Display Bar")
+
 In Yellow state, the flashing Yellow Flag lights.
 ![Rpm Bar LEDs](images/rpmBar2.png?raw=true "Yellow Flag LED Display Bar")
 
